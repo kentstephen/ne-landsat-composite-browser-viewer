@@ -5,7 +5,7 @@ import { ZarrLayer } from "@developmentseed/deck.gl-zarr";
 import * as zarr from "zarrita";
 
 const q = new URLSearchParams(location.search);
-const ROOT = q.get("src") || "http://127.0.0.1:8766/data/pyramid_v1";
+const ROOT = q.get("src") || "https://data.source.coop/kentstephen/landsat-mosaics-new-england/pyramid_v1";
 const BANDS = ["red", "green", "blue", "nir", "swir1", "swir2", "clear_count", "borrowed_pct", "pick_doy", "source"];
 const idx = Object.fromEntries(BANDS.map((b, i) => [b, i]));
 const SCALE = 0.0000275, OFFSET = -0.2;
