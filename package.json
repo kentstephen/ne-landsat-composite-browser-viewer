@@ -1,0 +1,30 @@
+{
+  "name": "ne-landsat-composite-browser-viewer",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "test": "node test.mjs http://localhost:5173/ shot"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@deck.gl/core": "^9.4.0",
+    "@deck.gl/geo-layers": "^9.4.0",
+    "@deck.gl/layers": "^9.4.0",
+    "@deck.gl/mapbox": "^9.4.0",
+    "@deck.gl/mesh-layers": "^9.4.0",
+    "@developmentseed/deck.gl-raster": "^0.7.0",
+    "@developmentseed/deck.gl-zarr": "^0.7.0",
+    "@developmentseed/morecantile": "^0.7.0",
+    "@luma.gl/core": "^9.4.0",
+    "@luma.gl/shadertools": "^9.4.0",
+    "http-server": "^14.1.1",
+    "maplibre-gl": "^5.24.0",
+    "playwright": "^1.63.0",
+    "vite": "^8.3.0",
+    "zarrita": "^0.7.5"
+  }
+}

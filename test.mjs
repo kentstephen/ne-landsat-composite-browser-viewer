@@ -1,0 +1,23 @@
+import { chromium } from "playwright";
+const [url, out] = process.argv.slice(2);
+const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const page = await browser.newPage({ viewport: { width: 1100, height: 720 } });
+const logs = [];
+page.on("console", (m) => { if (m.type() !== "debug") logs.push(`${m.type()}: ${m.text().slice(0, 300)}`); });
+page.on("requestfailed", (r) => logs.push(`reqfail: ${r.url().slice(0, 160)} ${r.failure()?.errorText}`));
+page.on("response", (r) => { if (r.status() >= 400) logs.push(`http ${r.status()}: ${r.url().slice(0, 160)}`); });
+page.on("pageerror", (e) => logs.push(`pageerror: ${e.message.slice(0, 300)}`));
+await page.goto(url);
+await page.waitForFunction(() => window.__viewer, null, { timeout: 90000 });
+for (let i = 0; i < 30; i++) { await page.waitForTimeout(1000); const f = await page.evaluate(() => window.__viewer.fetched); if (f > 0 && i > 6) break; }
+console.log("fetched", await page.evaluate(() => [window.__viewer.fetched, window.__viewer.fetchErr]), "status:", await page.evaluate(() => document.getElementById("status").textContent));
+await page.screenshot({ path: `${out}_colour.png` });
+await page.evaluate(() => window.__set({ doubt: 1 })); await page.waitForTimeout(2500);
+await page.screenshot({ path: `${out}_doubt.png` });
+await page.evaluate(() => window.__set({ doubt: 0, mode: 2 })); await page.waitForTimeout(2500);
+await page.screenshot({ path: `${out}_false.png` });
+await page.evaluate(() => window.__set({ mode: 0, yearIdx: 20 })); await page.waitForTimeout(6000);
+console.log("after year change fetched", await page.evaluate(() => [window.__viewer.fetched, window.__viewer.fetchErr]));
+await page.screenshot({ path: `${out}_green2020.png` });
+console.log("logs:", logs.filter((l) => !l.includes("GL Driver")).slice(0, 40).join("\n") || "none");
+await browser.close();

@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New England leaf-on composites (deck.gl-raster)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<style>
+  :root {
+    --ground: #141311;        /* under the imagery */
+    --ground-doubt: #6b655c;  /* shows through where the picture fades */
+    --panel: #26231f;         /* the card and the panel */
+    --panel-2: #302c27;       /* controls on them */
+    --rule: #403b34;
+    --ink: #efe9de;
+    --ink-2: #b6aea1;
+    --ink-3: #7f786c;
+    --own: #5aa04f;           /* own-year observation: green */
+    --before: #3987e5;        /* year before: blue */
+    --after: #d95926;         /* year after: orange */
+    --own-l7: #c9c2b4;        /* own-year Landsat 7: pale, hatched */
+    --focus: #ffd166;
+    --card-w: 300px;
+    --panel-w: 400px;
+    font-family: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--ink);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--ground); }
+  body { display: grid; grid-template-columns: 1fr; height: 100vh; overflow: hidden; }
+  body.doubt { grid-template-columns: 1fr var(--panel-w); }
+  #map { position: relative; height: 100%; background: var(--ground); min-width: 0; }
+  #map.doubt { background: var(--ground-doubt); }
+  #map canvas { outline: none; }
+  .maplibregl-ctrl-attrib { font-size: 11px; background: rgba(38,35,31,.8); color: var(--ink-2); }
+  .maplibregl-ctrl-attrib a { color: var(--ink-2); }
+
+  /* ---- the card, floating on the map ---- */
+  .card {
+    position: absolute; top: 14px; left: 14px; z-index: 2;
+    width: var(--card-w); max-height: calc(100% - 28px); overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.35);
+    display: flex; flex-direction: column; gap: 16px;
+    padding: 18px 20px 18px;
+  }
+  h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: 0.01em; }
+  .lede { color: var(--ink-2); font-size: 13.5px; margin: 4px 0 0; max-width: 34ch; }
+  .lede a { color: inherit; }
+
+  .year { display: flex; align-items: baseline; gap: 10px; }
+  .year output { font-size: 52px; font-weight: 500; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .year .of { color: var(--ink-3); font-size: 13px; }
+  input[type=range] { width: 100%; accent-color: var(--ink-2); margin: 6px 0 0; }
+  input[type=range]:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .keys { margin: 8px 0 0; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-3); }
+  .keys span { margin-left: 4px; }
+  .kbd {
+    font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-2); background: var(--panel-2);
+    border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 1px 7px; cursor: pointer; line-height: 1.3;
+  }
+  .kbd:hover { color: var(--ink); border-color: var(--ink-3); }
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--panel-2); border-radius: 6px; padding: 3px; gap: 3px; }
+  .seg button {
+    font: inherit; font-size: 14px; color: var(--ink-2); background: transparent; border: 0; border-radius: 4px;
+    padding: 7px 8px; cursor: pointer;
+  }
+  .seg button[aria-pressed=true] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--rule) inset; }
+  .seg button:disabled { color: var(--ink-3); cursor: default; }
+  .toggle { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel-2); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; }
+  .toggle[aria-pressed=true] { border-color: var(--ink-2); }
+  .toggle .state { color: var(--ink-3); }
+
+  /* ---- the doubt panel, on the right ---- */
+  #doubt {
+    background: var(--panel);
+    border-left: 1px solid var(--rule);
+    display: flex; flex-direction: column;
+    padding: 18px 22px 20px;
+    gap: 20px;
+    overflow-y: auto;
+    min-width: 0;
+  }
+  #doubt { position: relative; }
+  #doubt header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  /* the jump links, pinned under the header */
+  .jump {
+    position: sticky; top: -18px; z-index: 1; margin: -8px -22px 0; padding: 8px 22px 10px;
+    background: var(--panel); border-bottom: 1px solid var(--rule);
+    display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px;
+  }
+  .jump a { color: var(--ink-2); text-decoration: none; border-bottom: 1px dotted var(--ink-3); }
+  .jump a:hover { color: var(--ink); border-bottom-style: solid; }
+  section { scroll-margin-top: 40px; }
+  /* the cue at the bottom edge: more below */
+  .more {
+    position: sticky; bottom: -20px; margin: -60px -22px -20px; height: 60px; flex: none; pointer-events: none;
+    background: linear-gradient(180deg, rgba(38,35,31,0), var(--panel) 70%);
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px;
+    font-size: 12px; color: var(--ink-2); letter-spacing: 0.02em;
+    transition: opacity .2s; z-index: 1;
+  }
+  .more::after { content: "▾"; margin-left: 6px; }
+  #doubt.atEnd .more { opacity: 0; }
+  #doubt h2 { font-size: 17px; font-weight: 700; margin: 0; }
+  #doubt h2 span { font-variant-numeric: tabular-nums; }
+  .close { font: inherit; font-size: 20px; line-height: 1; color: var(--ink-2); background: transparent; border: 0; border-radius: 4px; padding: 2px 6px; cursor: pointer; }
+  .close:hover { color: var(--ink); background: var(--panel-2); }
+  .note { margin: 0; font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  section { display: grid; gap: 8px; flex: none; }
+  section h3 { font-size: 13.5px; font-weight: 500; color: var(--ink-2); margin: 0; display: flex; justify-content: space-between; gap: 8px; }
+  section h3 span { font-variant-numeric: tabular-nums; color: var(--ink-3); font-weight: 400; }
+  section p.small { margin: 0; color: var(--ink-3); font-size: 12.5px; }
+  .empty { color: var(--ink-3); font-size: 13.5px; margin: 0; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 0; }
+
+  .field { display: grid; gap: 4px; }
+  .field label { font-size: 13px; color: var(--ink-2); display: flex; justify-content: space-between; }
+  .field label b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .legend { display: grid; gap: 8px; font-size: 13.5px; }
+  .legend .row { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: center; color: var(--ink-2); }
+  .legend .row span:first-child { height: 14px; border-radius: 2px; }
+  .ramp { background: linear-gradient(90deg, #12300f, #2b6a2f, #5aa04f, #9ccf80, #cfe8b3); }
+  .ramp-fade { background: linear-gradient(90deg, var(--ground-doubt), var(--own)); }
+  .sw-own { background: var(--own); }
+  .sw-before { background: repeating-conic-gradient(var(--before) 0 25%, transparent 0 50%) 0 0 / 6px 6px; }
+  .sw-after { background: repeating-conic-gradient(var(--after) 0 25%, transparent 0 50%) 0 0 / 6px 6px; }
+  .sw-l7 { background: repeating-linear-gradient(135deg, var(--own-l7) 0 1.5px, transparent 0 5px); }
+  .sw-nodata { background: var(--ground); box-shadow: 0 0 0 1px var(--rule) inset; }
+  .legend p { margin: 0; color: var(--ink-3); font-size: 12.5px; max-width: 40ch; }
+
+  /* stat tiles */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--panel-2); border-radius: 6px; padding: 8px 10px; display: grid; gap: 2px; }
+  .stat b { font-size: 22px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--ink-3); line-height: 1.25; }
+  .stat.before b { color: var(--before); }
+
+  /* the stacked share bar */
+  .share { display: grid; gap: 6px; }
+  .share .bar { display: flex; height: 16px; border-radius: 3px; overflow: hidden; background: var(--ground); box-shadow: 0 0 0 1px var(--rule) inset; }
+  .share .bar i { display: block; height: 100%; }
+  .share .keys { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ink-2); }
+  .share .keys span { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+  .share .keys i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  /* svg charts */
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  svg.chart text { fill: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+  svg.chart .axis { stroke: var(--rule); stroke-width: 1; }
+  svg.chart .mark { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 2 3; }
+  svg.chart .window { fill: var(--panel-2); }
+  svg.chart .b { fill: var(--own); }
+  svg.chart .b.thin { fill: var(--ground-doubt); }
+  svg.chart .b.before { fill: var(--before); }
+  svg.chart .b.after { fill: var(--after); }
+  svg.chart .b.doy { fill: var(--ink-2); }
+  svg.chart .yr { cursor: pointer; }
+  svg.chart .yr rect.hit { fill: transparent; }
+  svg.chart .yr.now rect.hit { stroke: var(--focus); stroke-width: 1.5; fill: rgba(255,209,102,.08); }
+  svg.chart .yr:hover rect.hit { fill: rgba(255,255,255,.06); }
+
+  /* the clicked pixel */
+  .spark { width: 100%; height: auto; display: block; overflow: visible; }
+  .spark .line { fill: none; stroke: #a6d88a; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .spark .grid { stroke: var(--rule); stroke-width: 1; }
+  .spark text { fill: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .spark .pt { fill: #a6d88a; }
+  .spark .pt.before { stroke: var(--before); stroke-width: 2.5; }
+  .spark .pt.after { stroke: var(--after); stroke-width: 2.5; }
+  .spark .pt.thin { fill: var(--panel); stroke: #a6d88a; stroke-width: 1.5; }
+  .spark .cursor { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 2 3; }
+  .spark .hit { fill: transparent; cursor: crosshair; }
+  .readout { font-size: 13.5px; min-height: 2.8em; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .readout .k { color: var(--ink-3); }
+
+  .status { position: absolute; top: 12px; right: 12px; z-index: 2; font-size: 12.5px; color: var(--ink-2); background: rgba(38,35,31,.85); padding: 4px 9px; border-radius: 4px; pointer-events: none; }
+  .status[hidden] { display: none; }
+
+  @media (max-width: 720px) {
+    body.doubt { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+    .card { left: 10px; right: 10px; top: 10px; width: auto; max-height: 48%; padding: 12px 14px; gap: 10px; }
+    .year output { font-size: 36px; }
+    .lede { display: none; }
+    #doubt { border-left: 0; border-top: 1px solid var(--rule); max-height: 50vh; padding: 14px 16px; gap: 14px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .seg button, .spark .pt { transition: background-color .12s, r .12s; }
+  }
+</style>
+</head>
+<body>
+<div id="map">
+  <div class="card" aria-label="Controls">
+    <div>
+      <h1>New England leaf-on composites</h1>
+      <p class="lede">Landsat, one real observation per pixel per year. The provenance view draws where that observation is thin, or came from a neighbouring year.</p>
+    </div>
+
+    <div>
+      <div class="year"><output id="yearOut" for="year">—</output><span class="of" id="yearOf"></span></div>
+      <input type="range" id="year" min="0" max="0" value="0" aria-label="Year">
+      <p class="keys"><button class="kbd" id="yearPrev" aria-label="Year before">[</button><button class="kbd" id="yearNext" aria-label="Year after">]</button><span>to toggle years</span></p>
+    </div>
+
+    <div class="seg" role="group" aria-label="Picture">
+      <button id="mColour" data-mode="1" aria-pressed="true">True colour</button>
+      <button id="mPicture" data-mode="0" aria-pressed="false">Greenness</button>
+      <button id="mFalse" data-mode="2" aria-pressed="false" title="swir2, nir, red">False colour</button>
+    </div>
+
+    <button class="toggle" id="doubtOn" aria-pressed="false" aria-controls="doubt"><span>Where this came from</span><span class="state">off</span></button>
+  </div>
+  <div class="status" id="status">Opening the store</div>
+</div>
+
+<aside id="doubt" aria-label="Where this came from" hidden>
+  <header>
+    <h2>Where <span id="doubtYear">—</span> came from</h2>
+    <button class="close" id="doubtClose" aria-label="Close">×</button>
+  </header>
+  <p class="note" id="yearNote"></p>
+  <nav class="jump" aria-label="Sections of this panel">
+    <a href="#pixelSec">Clicked pixel</a><a href="#legendSec">Legend</a><a href="#regionSec">New England</a><a href="#ccSec">Clear looks</a><a href="#doySec">Day</a><a href="#yearsSec">Every year</a><a href="#viewSec">In view</a>
+  </nav>
+
+  <section class="pixel" id="pixelSec">
+    <h3>Clicked pixel <span id="pixelWhere"></span></h3>
+    <div id="pixelBody"><p class="empty">Click the map for one pixel's greenness by year, and where each year came from. [ and ] step the year.</p></div>
+    <div class="readout" id="readout"></div>
+  </section>
+  <hr>
+
+  <div class="field">
+    <label for="doubt">Strength on the map <b id="doubtOut">100%</b></label>
+    <input type="range" id="doubtStrength" min="0" max="100" value="100">
+  </div>
+
+  <div class="legend" id="legendSec"><div class="legend" id="legend"></div></div>
+
+  <hr>
+
+  <section id="regionSec">
+    <h3>Across New England <span id="regionRes"></span></h3>
+    <div class="stats" id="regionStats"></div>
+  </section>
+
+  <section id="ccSec">
+    <h3>Clear looks behind each pixel <span>share of land</span></h3>
+    <div id="ccChart"></div>
+    <p class="small" id="ccNote"></p>
+  </section>
+
+  <section id="doySec">
+    <h3>Day of the stored observation <span>share of land</span></h3>
+    <div id="doyChart"></div>
+    <p class="small">The preferred window, June 1 to September 30, is shaded. In the year the observation was taken, which for a borrowed pixel is the neighbouring year.</p>
+  </section>
+
+  <section id="yearsSec">
+    <h3>Every year <span>click a year to go there</span></h3>
+    <div id="yearsChart"></div>
+  </section>
+
+  <hr>
+
+  <section id="viewSec">
+    <h3>In view <span id="viewWhere"></span></h3>
+    <div id="viewBody"><p class="empty">Waiting for tiles.</p></div>
+    <p class="small" id="viewNote"></p>
+  </section>
+
+  <div class="more" aria-hidden="true">more below</div>
+</aside>
+<script type="module" src="/main.js"></script>
+</body>
+</html>
