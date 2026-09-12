@@ -372,13 +372,7 @@ function levelOnScreen() {
 }
 let clicked = null;
 // outline the pixel the panel is describing, in the focus colour
-let pickMarker = null;
 function showPick([x1, y1, x2, y2]) {
-  const centre = [(x1 + x2) / 2, (y1 + y2) / 2];
-  if (!pickMarker) {
-    const el = document.createElement("div"); el.className = "pick"; el.setAttribute("aria-label", "Clicked pixel");
-    pickMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(centre).addTo(map);
-  } else pickMarker.setLngLat(centre);
   const ring = [[x1, y1], [x2, y1], [x2, y2], [x1, y2], [x1, y1]];
   const data = { type: "Feature", geometry: { type: "Polygon", coordinates: [ring] } };
   if (map.getSource("pick")) { map.getSource("pick").setData(data); return; }
