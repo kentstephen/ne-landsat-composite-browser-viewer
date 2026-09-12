@@ -371,6 +371,22 @@ function levelOnScreen() {
   return zs.length ? nLevels - 1 - Math.max(...zs) : 0;
 }
 let clicked = null;
+// outline the pixel the panel is describing, in the focus colour
+let pickMarker = null;
+function showPick([x1, y1, x2, y2]) {
+  const centre = [(x1 + x2) / 2, (y1 + y2) / 2];
+  if (!pickMarker) {
+    const el = document.createElement("div"); el.className = "pick"; el.setAttribute("aria-label", "Clicked pixel");
+    pickMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(centre).addTo(map);
+  } else pickMarker.setLngLat(centre);
+  const ring = [[x1, y1], [x2, y1], [x2, y2], [x1, y2], [x1, y1]];
+  const data = { type: "Feature", geometry: { type: "Polygon", coordinates: [ring] } };
+  if (map.getSource("pick")) { map.getSource("pick").setData(data); return; }
+  map.addSource("pick", { type: "geojson", data });
+  map.addLayer({ id: "pick-fill", type: "fill", source: "pick", paint: { "fill-color": "#ffd166", "fill-opacity": 0.12 } });
+  map.addLayer({ id: "pick-line", type: "line", source: "pick", paint: { "line-color": "#ffd166", "line-width": 2 } });
+  map.addLayer({ id: "pick-halo", type: "line", source: "pick", paint: { "line-color": "#000", "line-width": 4, "line-opacity": 0.5 } }, "pick-line");
+}
 map.on("click", async (e) => {
   if (!overlay) return;
   const { lng, lat } = e.lngLat;
@@ -391,6 +407,7 @@ map.on("click", async (e) => {
       return { year: y, valid, ndvi: valid ? (nir - red) / Math.max(nir + red, 1e-4) : null, cc: got.clear_count[t], bp: got.borrowed_pct[t], src: got.source ? got.source[t] : null };
     });
     clicked = { lng, lat, lvl, rows };
+    showPick([x0 + col * dx, y0 + row * dy, x0 + (col + 1) * dx, y0 + (row + 1) * dy]);
     if (!doubtOn) setDoubt(true);
     renderPixel();
     $("doubt").scrollTo({ top: 0, behavior: "smooth" });

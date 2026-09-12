@@ -179,6 +179,8 @@
   .spark .pt.before { stroke: var(--before); stroke-width: 2.5; }
   .spark .pt.after { stroke: var(--after); stroke-width: 2.5; }
   .spark .pt.thin { fill: var(--panel); stroke: #a6d88a; stroke-width: 1.5; }
+  .pick { width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid var(--focus); box-shadow: 0 0 0 2px rgba(0,0,0,.55), inset 0 0 0 2px rgba(0,0,0,.55); pointer-events: none; }
+  .pick::after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--focus); box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
   .spark .now { stroke: var(--focus); stroke-width: 1.5; }
   .spark .pt.now { r: 5; stroke: var(--focus); stroke-width: 2; }
   .spark .cursor { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 2 3; }
