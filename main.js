@@ -65,7 +65,7 @@ function yearNote() {
 
 // ---- state ----
 let year = Number(q.get("year")) || 2013; if (!years.includes(year)) year = years[years.length - 1];
-let mode = 1;          // 0 greenness, 1 true colour, 2 false colour
+let mode = 1;          // 0 NDVI, 1 true colour, 2 false colour
 let doubtOn = false, doubt = 1.0;
 
 // ---- per tile: every band with the same slice, one r32float 2d-array texture ----
@@ -413,12 +413,13 @@ function renderPixel() {
   const ys = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
   const path = valid.map((r, k) => `${k ? "L" : "M"}${xs(rows.indexOf(r)).toFixed(1)},${ys(r.ndvi).toFixed(1)}`).join(" ");
   const cls = (r) => r.bp > 0 && r.bp < 255 ? (r.src === 2 ? "after" : "before") : (r.cc > 0 && r.cc < THIN ? "thin" : "");
-  const pts = valid.map((r) => `<circle class="pt ${cls(r)}" cx="${xs(rows.indexOf(r)).toFixed(1)}" cy="${ys(r.ndvi).toFixed(1)}" r="3.5"><title>${r.year}</title></circle>`).join("");
+  const pts = valid.map((r) => `<circle class="pt ${cls(r)}" data-year="${r.year}" cx="${xs(rows.indexOf(r)).toFixed(1)}" cy="${ys(r.ndvi).toFixed(1)}" r="3.5"><title>${r.year}</title></circle>`).join("");
   const first = valid[0], last = valid[valid.length - 1];
   $("pixelBody").innerHTML = `
-    <svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Greenness by year for the clicked pixel">
+    <svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="NDVI by year for the clicked pixel">
       <line class="grid" x1="${padL}" x2="${W - padR}" y1="${(H - padB).toFixed(1)}" y2="${(H - padB).toFixed(1)}"></line>
       <path class="line" d="${path}"></path>${pts}
+      <line class="now" id="sparkNow" x1="0" x2="0" y1="${padT}" y2="${H - padB}"></line>
       <line class="cursor" id="cursor" x1="0" x2="0" y1="${padT}" y2="${H - padB}" visibility="hidden"></line>
       <text x="${padL}" y="${H - 4}">${rows[0].year}</text>
       <text x="${W - padR}" y="${H - 4}" text-anchor="end">${rows[rows.length - 1].year}</text>
@@ -432,6 +433,8 @@ function renderPixel() {
     let best = 0; for (let i = 1; i < rows.length; i++) if (Math.abs(xs(i) - x) < Math.abs(xs(best) - x)) best = i;
     return best;
   };
+  clicked.xs = xs;
+  markSparkYear();
   svg.addEventListener("pointermove", (ev) => { const i = pickRow(ev); cursor.setAttribute("x1", xs(i)); cursor.setAttribute("x2", xs(i)); cursor.setAttribute("visibility", "visible"); readout(rows[i]); });
   svg.addEventListener("pointerleave", () => { cursor.setAttribute("visibility", "hidden"); refreshReadout(); });
   svg.addEventListener("click", (ev) => { const i = pickRow(ev); yearEl.value = i; yearEl.dispatchEvent(new Event("input")); });
@@ -445,6 +448,12 @@ function whence(r) {
   return `${looks}, own year`;
 }
 function readout(r) {
-  $("readout").innerHTML = r ? `<span class="k">${r.year}</span> greenness ${r.valid ? r.ndvi.toFixed(2) : "—"}<br><span class="k">${whence(r)}</span>` : "";
+  $("readout").innerHTML = r ? `<span class="k">${r.year}</span> NDVI ${r.valid ? r.ndvi.toFixed(2) : "—"}<br><span class="k">${whence(r)}</span>` : "";
 }
-function refreshReadout() { if (clicked) readout(clicked.rows.find((r) => r.year === year)); }
+function markSparkYear() {
+  const line = $("sparkNow"); if (!clicked || !line) return;
+  const i = clicked.rows.findIndex((r) => r.year === year), x = clicked.xs(i).toFixed(1);
+  line.setAttribute("x1", x); line.setAttribute("x2", x);
+  $("pixelBody").querySelectorAll(".pt").forEach((c) => c.classList.toggle("now", Number(c.dataset.year) === year));
+}
+function refreshReadout() { if (clicked) { readout(clicked.rows.find((r) => r.year === year)); markSparkYear(); } }
