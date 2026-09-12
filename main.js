@@ -226,6 +226,7 @@ function setDoubt(on) {
   map.resize();
   rerender(); renderLegend();
   if (on) { renderRegion(); renderYears(); scheduleInView(); }
+  else if (clicked) clearPick(); // the panel is the only place the pixel is read out, so closing it drops the pick
 }
 $("doubtOn").addEventListener("click", () => setDoubt(!doubtOn));
 $("doubtClose").addEventListener("click", () => setDoubt(false));
