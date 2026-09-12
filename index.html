@@ -118,6 +118,8 @@
   .note { margin: 0; font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
   section { display: grid; gap: 8px; flex: none; }
   section h3 { font-size: 13.5px; font-weight: 500; color: var(--ink-2); margin: 0; display: flex; justify-content: space-between; gap: 8px; }
+  section h3 .clear { font: inherit; font-size: 12px; color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 4px; padding: 1px 7px; cursor: pointer; margin-left: auto; }
+  section h3 .clear:hover { color: var(--ink); background: var(--panel-2); }
   section h3 span { font-variant-numeric: tabular-nums; color: var(--ink-3); font-weight: 400; }
   section p.small { margin: 0; color: var(--ink-3); font-size: 12.5px; }
   .empty { color: var(--ink-3); font-size: 13.5px; margin: 0; }
@@ -238,7 +240,7 @@
   </nav>
 
   <section class="pixel" id="pixelSec">
-    <h3>Clicked pixel <span id="pixelWhere"></span></h3>
+    <h3>Clicked pixel <span id="pixelWhere"></span><button class="clear" id="pixelClear" hidden>Clear</button></h3>
     <div id="pixelBody"><p class="empty">Click the map for one pixel's NDVI by year, and where each year came from. [ and ] step the year.</p></div>
     <div class="readout" id="readout"></div>
   </section>

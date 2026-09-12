@@ -381,6 +381,14 @@ function showPick([x1, y1, x2, y2]) {
   map.addLayer({ id: "pick-line", type: "line", source: "pick", paint: { "line-color": "#ffd166", "line-width": 2 } });
   map.addLayer({ id: "pick-halo", type: "line", source: "pick", paint: { "line-color": "#000", "line-width": 4, "line-opacity": 0.5 } }, "pick-line");
 }
+const EMPTY_PIXEL = $("pixelBody").innerHTML;
+function clearPick() {
+  clicked = null;
+  map.getSource("pick")?.setData({ type: "FeatureCollection", features: [] });
+  $("pixelBody").innerHTML = EMPTY_PIXEL; $("readout").innerHTML = ""; $("pixelWhere").textContent = "";
+  $("pixelClear").hidden = true;
+}
+$("pixelClear").addEventListener("click", clearPick);
 map.on("click", async (e) => {
   if (!overlay) return;
   const { lng, lat } = e.lngLat;
@@ -402,6 +410,7 @@ map.on("click", async (e) => {
     });
     clicked = { lng, lat, lvl, rows };
     showPick([x0 + col * dx, y0 + row * dy, x0 + (col + 1) * dx, y0 + (row + 1) * dy]);
+    $("pixelClear").hidden = false;
     if (!doubtOn) setDoubt(true);
     renderPixel();
     $("doubt").scrollTo({ top: 0, behavior: "smooth" });
