@@ -60,7 +60,7 @@ const summary = {};
 const pct = (x) => x < 0.005 ? (x === 0 ? "none" : "under 1%") : x < 0.095 ? `${(x * 100).toFixed(1)}%` : `${Math.round(x * 100)}%`;
 function yearNote() {
   const s = summary[year]; if (!s) return "";
-  return `${year}: ${pct(s.borrowed)} of the land is an observation from a neighbouring year; ${pct(s.thin)} sits on fewer than ${THIN} clear looks.`;
+  return `${year}: ${pct(s.borrowedFoot)} of the land is an observation from a neighbouring year; ${pct(s.thin)} sits on fewer than ${THIN} clear looks.`;
 }
 
 // ---- state ----
@@ -272,7 +272,7 @@ function renderRegion() {
   const s = summary[year]; if (!s) return;
   $("regionRes").textContent = `${year}, ${coarseRes} m blocks`;
   $("regionStats").innerHTML = statTiles([
-    { v: pct(s.borrowed), k: "of the land is from a neighbouring year", cls: "before" },
+    { v: pct(s.borrowedFoot), k: "of the land is from a neighbouring year", cls: "before" },
     { v: pct(s.thin), k: `sits on fewer than ${THIN} clear looks` },
     { v: s.medianCC, k: "clear looks behind the typical pixel" },
   ]);
@@ -293,12 +293,12 @@ function renderYears() {
   const W = 356, H = 110, padL = 4, padR = 4, padT = 8, padB = 18, gap = 2;
   const n = years.length, bw = (W - padL - padR) / n, x = (i) => padL + i * bw;
   const rowH = (H - padT - padB - gap) / 2;
-  const maxB = Math.max(0.01, ...years.map((y) => summary[y].borrowed)), maxT = Math.max(0.01, ...years.map((y) => summary[y].thin));
+  const maxB = Math.max(0.01, ...years.map((y) => summary[y].borrowedFoot)), maxT = Math.max(0.01, ...years.map((y) => summary[y].thin));
   const g = years.map((y, i) => {
     const s = summary[y];
-    const hb = (s.borrowed / maxB) * rowH, ht = (s.thin / maxT) * rowH;
+    const hb = (s.borrowedFoot / maxB) * rowH, ht = (s.thin / maxT) * rowH;
     return `<g class="yr ${y === year ? "now" : ""}" data-i="${i}">
-      <rect class="hit" x="${x(i).toFixed(1)}" y="${padT}" width="${bw.toFixed(1)}" height="${H - padT - padB}" rx="2"><title>${y}: ${pct(s.borrowed)} from a neighbouring year, ${pct(s.thin)} on fewer than ${THIN} clear looks</title></rect>
+      <rect class="hit" x="${x(i).toFixed(1)}" y="${padT}" width="${bw.toFixed(1)}" height="${H - padT - padB}" rx="2"><title>${y}: ${pct(s.borrowedFoot)} from a neighbouring year, ${pct(s.thin)} on fewer than ${THIN} clear looks</title></rect>
       <rect class="b before" x="${(x(i) + 1).toFixed(1)}" y="${(padT + rowH - hb).toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${hb.toFixed(1)}"></rect>
       <rect class="b thin" x="${(x(i) + 1).toFixed(1)}" y="${(padT + rowH + gap + rowH - ht).toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${ht.toFixed(1)}"></rect>
     </g>`;
@@ -354,7 +354,7 @@ function renderInView() {
   const ccLabels = []; for (let i = 0; i <= CC_MAX; i++) ccLabels[i] = { i, title: `${i === CC_MAX ? CC_MAX + "+" : i} clear looks: ${pct(cc[i] / valid)}`, text: i === 0 ? "0" : i === THIN ? String(THIN) : i % 8 === 0 ? String(i) : i === CC_MAX ? `${CC_MAX}+` : null };
   $("viewBody").innerHTML = `
     <div class="stats">${statTiles([
-      { v: pct(hasSrc ? (before + after) / valid : borrowed / valid), k: "from a neighbouring year", cls: "before" },
+      { v: pct(hasSrc ? (before + after) / valid : bpSum / 100 / valid), k: "from a neighbouring year", cls: "before" },
       { v: pct(thin / valid), k: `on fewer than ${THIN} clear looks` },
       { v: pct(valid / total), k: "of the screen has an observation" },
     ])}</div>
@@ -362,7 +362,7 @@ function renderInView() {
     ${svgBars(Array.from(cc, (v) => v / valid), { H: 72, cls: (i) => i < THIN ? "b thin" : "b", labels: ccLabels, marks: [THIN] })}`;
   $("viewNote").textContent = hasSrc
     ? "At 30 m the source plane says which year each pixel's observation came from."
-    : `Coarser than 30 m the source plane is not stored; a block counts as borrowed if any of its footprint came from a neighbouring year (${pct(bpSum / 100 / valid)} of the footprint on screen did). Zoom in for the split between before, after and Landsat 7.`;
+    : `Coarser than 30 m the source plane is not stored; the share is the borrowed part of each block's footprint, summed. The bar counts blocks touched: ${pct(borrowed / valid)} of them hold at least one borrowed pixel. Zoom in for the split between before, after and Landsat 7.`;
 }
 
 // ---- the clicked pixel: read the ten arrays at the level on screen, every year ----
